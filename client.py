@@ -33,40 +33,40 @@ def bytes2addr(bytes):
 class Client():
     def __init__(self):
         try:
-            master_ip = '127.0.0.1' if sys.argv[
-                1] == 'localhost' else sys.argv[1]
+            master_ip = '127.0.0.1' if sys.argv[1] == 'localhost' else sys.argv[1]
             self.master = (master_ip, int(sys.argv[2]))
             self.pool = sys.argv[3].strip()
             self.sockfd = self.target = None
             self.periodic_running = False
             self.peer_nat_type = None
         except (IndexError, ValueError):
-            print(sys.stderr, "usage: %s <host> <port> <pool>" % sys.argv[0])
+            print((sys.stderr, "usage: %s <host> <port> <pool>" % sys.argv[0]))
             sys.exit(65)
 
     def request_for_connection(self, nat_type_id=0):
         self.sockfd = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.sockfd.sendto(self.pool + ' {0}'.format(nat_type_id), self.master)
+        self.sockfd.sendto((self.pool + ' {0}'.format(nat_type_id)).encode("utf-8"), self.master)
         data, addr = self.sockfd.recvfrom(len(self.pool) + 3)
+        data = data.decode('utf-8')
         if data != "ok " + self.pool:
-            print(sys.stderr, "unable to request!")
+            print((sys.stderr, "unable to request!"))
             sys.exit(1)
-        self.sockfd.sendto("ok", self.master)
+        self.sockfd.sendto("ok".encode("utf-8"), self.master)
         sys.stderr = sys.stdout
-        print(sys.stderr,
-              "request sent, waiting for partner in pool '%s'..." % self.pool)
+        print((sys.stderr,
+              "request sent, waiting for partner in pool '%s'..." % self.pool))
         data, addr = self.sockfd.recvfrom(8)
-
         self.target, peer_nat_type_id = bytes2addr(data)
-        print(self.target, peer_nat_type_id)
+        print((self.target, peer_nat_type_id))
         self.peer_nat_type = NATTYPE[peer_nat_type_id]
-        print(sys.stderr, "connected to {1}:{2}, its NAT type is {0}".format(
-            self.peer_nat_type, *self.target))
+        print((sys.stderr, "connected to {1}:{2}, its NAT type is {0}".format(
+            self.peer_nat_type, *self.target)))
 
     def recv_msg(self, sock, is_restrict=False, event=None):
         if is_restrict:
             while True:
                 data, addr = sock.recvfrom(1024)
+                data = data.decode('utf-8')
                 if self.periodic_running:
                     print("periodic_send is alive")
                     self.periodic_running = False
@@ -80,6 +80,7 @@ class Client():
         else:
             while True:
                 data, addr = sock.recvfrom(1024)
+                data = data.decode('utf-8')
                 if addr == self.target or addr == self.master:
                     sys.stdout.write(data)
                     if data == "punching...\n":  # peer是restrict
@@ -88,6 +89,7 @@ class Client():
     def send_msg(self, sock):
         while True:
             data = sys.stdin.readline()
+            data = data.encode('utf-8')
             sock.sendto(data, self.target)
 
     @staticmethod
@@ -110,8 +112,8 @@ class Client():
         cancel_event = Event()
 
         def send(count):
-            self.sockfd.sendto('punching...\n', self.target)
-            print("UDP punching package {0} sent".format(count))
+            self.sockfd.sendto('punching...\n'.encode('utf-8'), self.target)
+            print(("UDP punching package {0} sent".format(count)))
             if self.periodic_running:
                 Timer(0.5, send, args=(count + 1, )).start()
 
@@ -129,11 +131,13 @@ class Client():
         def send_msg_symm(sock):
             while True:
                 data = 'msg ' + sys.stdin.readline()
-                sock.sendto(data, self.master)
+
+                sock.sendto(data.encode('utf-8'), self.master)
 
         def recv_msg_symm(sock):
             while True:
                 data, addr = sock.recvfrom(1024)
+                data = data.decode('utf-8')
                 if addr == self.master:
                     sys.stdout.write(data)
 
@@ -147,6 +151,7 @@ class Client():
         选择哪种chat模式是根据nat_type来选择, 例如我这边的NAT设备是restrict, 那么我必须得一直向对方发包,
         我的NAT设备才能识别对方为"我已经发过包的地址". 直到收到对方的包, periodic发送停止
         """
+
         if not test_nat_type:
             nat_type, _, _ = self.get_nat_type()
         else:
@@ -154,7 +159,7 @@ class Client():
         try:
             self.request_for_connection(nat_type_id=NATTYPE.index(nat_type))
         except ValueError:
-            print("NAT type is %s" % nat_type)
+            print(("NAT type is %s" % nat_type))
             self.request_for_connection(nat_type_id=4)  # Unknown NAT
 
         if nat_type == UnknownNAT or self.peer_nat_type == UnknownNAT:
@@ -226,15 +231,16 @@ class Client():
             stun_host=options.stun_host,
             stun_port=options.stun_port)
         nat_type, external_ip, external_port = stun.get_ip_info(**kwargs)
-        print("NAT Type:", nat_type)
-        print("External IP:", external_ip)
-        print("External Port:", external_port)
+        print(("NAT Type:", nat_type))
+        print(("External IP:", external_ip))
+        print(("External Port:", external_port))
         return nat_type, external_ip, external_port
 
 
 if __name__ == "__main__":
     c = Client()
     try:
+        print(sys.argv[4])
         test_nat_type = NATTYPE[int(sys.argv[4])]  # 输入数字0,1,2,3
     except IndexError:
         test_nat_type = None

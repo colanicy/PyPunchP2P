@@ -1,5 +1,6 @@
 # coding:utf-8
 # this script come from https://pypi.python.org/pypi/pystun
+# python3.6
 
 import random
 import socket
@@ -87,22 +88,22 @@ ChangedAddressError = "Meet an error, when do Test1 on Changed IP and Port"
 
 
 def _initialize():
-    items = dictAttrToVal.items()
-    for i in xrange(len(items)):
+    items = list(dictAttrToVal.items())
+    for i in range(len(items)):
         dictValToAttr.update({items[i][1]: items[i][0]})
-    items = dictMsgTypeToVal.items()
-    for i in xrange(len(items)):
+    items = list(dictMsgTypeToVal.items())
+    for i in range(len(items)):
         dictValToMsgType.update({items[i][1]: items[i][0]})
 
 
 def gen_tran_id():
     a = ''
-    for i in xrange(32):
+    for i in range(32):
         a += random.choice('0123456789ABCDEF')  # RFC3489 128bits transaction ID
     #return binascii.a2b_hex(a)
     return a
 
-
+#sun协议消息的解析
 def stun_test(sock, host, port, source_ip, source_port, send_data=""):
     retVal = {'Resp': False, 'ExternalIP': None, 'ExternalPort': None,
               'SourceIP': None, 'SourcePort': None, 'ChangedIP': None,
@@ -110,6 +111,7 @@ def stun_test(sock, host, port, source_ip, source_port, send_data=""):
     str_len = "%#04d" % (len(send_data) / 2)
     tranid = gen_tran_id()
     str_data = ''.join([BindRequestMsg, str_len, tranid, send_data])
+    print('str_data->'+str_data)
     data = binascii.a2b_hex(str_data)
     recvCorr = False
     while not recvCorr:
@@ -134,16 +136,16 @@ def stun_test(sock, host, port, source_ip, source_port, send_data=""):
                     retVal['Resp'] = False
                     return retVal
         msgtype = binascii.b2a_hex(buf[0:2])
-        bind_resp_msg = dictValToMsgType[msgtype] == "BindResponseMsg"
-        tranid_match = tranid.upper() == binascii.b2a_hex(buf[4:20]).upper()
+        bind_resp_msg = dictValToMsgType[str(msgtype)[2:-1]] == "BindResponseMsg"
+        tranid_match = tranid.upper() == str(binascii.b2a_hex(buf[4:20]))[2:-1].upper()
         if bind_resp_msg and tranid_match:
             recvCorr = True
-            retVal['Resp'] = True
+            retVal['Resp'] = True#full cone
             len_message = int(binascii.b2a_hex(buf[2:4]), 16)
             len_remain = len_message
-            base = 20
+            base = 20#报文头的长度
             while len_remain:
-                attr_type = binascii.b2a_hex(buf[base:(base + 2)])
+                attr_type = str(binascii.b2a_hex(buf[base:(base + 2)]))[2:-1]
                 attr_len = int(binascii.b2a_hex(buf[(base + 2):(base + 4)]),
                                16)
                 if attr_type == MappedAddress:  # first two bytes: 0x0001
@@ -257,9 +259,9 @@ def get_ip_info(source_ip="0.0.0.0", source_port=54320, stun_host=None,
 
 def main():
     nat_type, external_ip, external_port = get_ip_info()
-    print "NAT Type:", nat_type
-    print "External IP:", external_ip
-    print "External Port:", external_port
+    print("NAT Type:", nat_type)
+    print("External IP:", external_ip)
+    print("External Port:", external_port)
 
 if __name__ == '__main__':
     main()
