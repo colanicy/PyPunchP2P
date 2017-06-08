@@ -11,7 +11,7 @@ Based on
 [pystun][2]  
 [Peer-to-Peer Communication Across Network Address Translators][3]
 
-Python edition: py2.6+ but no Python 3 support  
+Python edition: py3.6  
 Platform: Linux/Windows
 
 Usage
